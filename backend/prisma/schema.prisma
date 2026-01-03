@@ -3,58 +3,127 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
 }
-
-/* =========================
-   USER
-========================= */
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  name      String?
-  password  String
-
-  dateOfBirth DateTime?
-  guardiansName  String?
-  className   String?
-
-  attempts  QuizAttempt[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String        @id @default(uuid())
+  email         String        @unique
+  name          String?
+  password      String
+  dateOfBirth   DateTime?
+  guardiansName String?
+  className     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  attempts      QuizAttempt[]
 }
-
-/* =========================
-   QUIZ (CONTAINER)
-========================= */
 
 model Quiz {
-  id          String   @id @default(uuid())
+  id          String           @id @default(uuid())
   title       String
   description String?
-
+  createdAt   DateTime         @default(now())
   assessments QuizAssessment[]
   attempts    QuizAttempt[]
-
-  createdAt   DateTime @default(now())
 }
 
-/* =========================
-   ASSESSMENT (RIASEC, etc.)
-========================= */
-
 model Assessment {
-  id        String   @id @default(uuid())
-  name      String   @unique   // 👈 ADD THIS
+  id        String           @id @default(uuid())
+  name      String           @unique
   type      AssessmentType
   uiType    UIType
-
-  traits    Trait[]
   questions Question[]
   quizzes   QuizAssessment[]
+  traits    Trait[]
+}
+
+model QuizAssessment {
+  quizId       String
+  assessmentId String
+  order        Int
+  assessment   Assessment @relation(fields: [assessmentId], references: [id])
+  quiz         Quiz       @relation(fields: [quizId], references: [id])
+
+  @@id([quizId, assessmentId])
+}
+
+model Trait {
+  id           String          @id @default(uuid())
+  code         String
+  name         String
+  assessmentId String
+  questions    QuestionTrait[]
+  assessment   Assessment      @relation(fields: [assessmentId], references: [id])
+
+  @@unique([code, assessmentId])
+}
+
+model Question {
+  id           String          @id @default(uuid())
+  text         String
+  type         QuestionType
+  assessmentId String
+  createdAt    DateTime        @default(now())
+  code         String
+  options      Option[]
+  assessment   Assessment      @relation(fields: [assessmentId], references: [id])
+  traits       QuestionTrait[]
+  responses    Response[]
+
+  @@unique([code, assessmentId])
+  @@index([assessmentId])
+}
+
+model Option {
+  id         String     @id @default(uuid())
+  text       String
+  score      Int
+  questionId String
+  question   Question   @relation(fields: [questionId], references: [id])
+  responses  Response[]
+}
+
+model QuestionTrait {
+  questionId String
+  traitId    String
+  weight     Float    @default(1)
+  question   Question @relation(fields: [questionId], references: [id])
+  trait      Trait    @relation(fields: [traitId], references: [id])
+
+  @@id([questionId, traitId])
+}
+
+model QuizAttempt {
+  id            String        @id @default(uuid())
+  userId        String
+  quizId        String
+  attemptNumber Int
+  status        AttemptStatus @default(IN_PROGRESS)
+  totalScore    Int?
+  traitScores   Json?
+  aiFeedback    String?
+  createdAt     DateTime      @default(now())
+  completedAt   DateTime?
+  quiz          Quiz          @relation(fields: [quizId], references: [id])
+  user          User          @relation(fields: [userId], references: [id])
+  responses     Response[]
+
+  @@unique([userId, quizId, attemptNumber])
+}
+
+model Response {
+  id         String      @id @default(uuid())
+  attemptId  String
+  questionId String
+  optionId   String
+  attempt    QuizAttempt @relation(fields: [attemptId], references: [id])
+  option     Option      @relation(fields: [optionId], references: [id])
+  question   Question    @relation(fields: [questionId], references: [id])
+
+  @@unique([attemptId, questionId])
 }
 
 enum AssessmentType {
@@ -69,138 +138,13 @@ enum UIType {
   LIKERT
 }
 
-/* =========================
-   QUIZ ↔ ASSESSMENT
-========================= */
-
-model QuizAssessment {
-  quizId        String
-  assessmentId String
-  order         Int
-
-  quiz          Quiz        @relation(fields: [quizId], references: [id])
-  assessment    Assessment  @relation(fields: [assessmentId], references: [id])
-
-  @@id([quizId, assessmentId])
-}
-
-/* =========================
-   TRAITS
-========================= */
-
-model Trait {
-  id            String @id @default(uuid())
-  code          String
-  name          String
-  assessmentId String
-
-  assessment    Assessment     @relation(fields: [assessmentId], references: [id])
-  questions     QuestionTrait[]
-  @@unique([code, assessmentId])   // 👈 ADD THIS
-}
-
-/* =========================
-   QUESTIONS
-========================= */
-
-model Question {
-  id            String   @id @default(uuid())   // system identity
-  code          String                             // "R1", "I2", "O5"
-  text          String
-  type          QuestionType
-  assessmentId String
-
-  assessment    Assessment     @relation(fields: [assessmentId], references: [id])
-  options       Option[]
-  traits        QuestionTrait[]
-  responses     Response[]
-
-  createdAt     DateTime @default(now())
-
-  @@unique([code, assessmentId])
-  @@index([assessmentId])
-}
-
-
 enum QuestionType {
   BINARY
   MCQ
-}
-
-/* =========================
-   OPTIONS
-========================= */
-
-model Option {
-  id          String @id @default(uuid())
-  text        String
-  score       Int
-  questionId String
-
-  question    Question @relation(fields: [questionId], references: [id])
-  responses   Response[]
-}
-
-/* =========================
-   QUESTION ↔ TRAIT
-========================= */
-
-model QuestionTrait {
-  questionId String
-  traitId    String
-  weight     Float @default(1)
-
-  question   Question @relation(fields: [questionId], references: [id])
-  trait      Trait    @relation(fields: [traitId], references: [id])
-
-  @@id([questionId, traitId])
-}
-
-/* =========================
-   QUIZ ATTEMPTS (REATTEMPTS)
-========================= */
-
-model QuizAttempt {
-  id            String   @id @default(uuid())
-  userId        String
-  quizId        String
-  attemptNumber Int
-  status        AttemptStatus @default(IN_PROGRESS)
-
-  totalScore    Int?
-  traitScores   Json?
-  aiFeedback    String?
-
-  responses     Response[]
-
-  createdAt     DateTime @default(now())
-  completedAt   DateTime?
-
-  user          User @relation(fields: [userId], references: [id])
-  quiz          Quiz @relation(fields: [quizId], references: [id])
-
-  @@unique([userId, quizId, attemptNumber])
 }
 
 enum AttemptStatus {
   IN_PROGRESS
   COMPLETED
   FAILED
-}
-
-/* =========================
-   RESPONSES
-========================= */
-
-model Response {
-  id          String @id @default(uuid())
-  attemptId  String
-  questionId String
-  optionId   String
-
-  attempt    QuizAttempt @relation(fields: [attemptId], references: [id])
-  question   Question    @relation(fields: [questionId], references: [id])
-  option     Option      @relation(fields: [optionId], references: [id])
-
-  @@unique([attemptId, questionId])
 }

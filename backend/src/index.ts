@@ -1,19 +1,16 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
+import express from "express";
+import cors from "cors";
+import quizRoutes from "./routes/quiz.routes";
+import { configDotenv } from "dotenv";
 
-dotenv.config();
-
+configDotenv();
 const app = express();
-const PORT = process.env.PORT || 8080;
 
 app.use(cors());
 app.use(express.json());
 
-app.get('/health', (_, res) => {
-  res.json({ status: 'ok' });
-});
-
+app.use("/api/quizzes", quizRoutes);
+const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
-  console.log(`Backend running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
