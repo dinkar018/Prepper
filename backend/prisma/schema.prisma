@@ -10,25 +10,31 @@ datasource db {
 
 model User {
   id            String        @id @default(uuid())
-  email         String        @unique
+  mobile        String        @unique
   name          String?
   password      String
+
   dateOfBirth   DateTime?
   guardiansName String?
   className     String?
+
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+
   attempts      QuizAttempt[]
 }
 
+
 model Quiz {
-  id          String           @id @default(uuid())
-  title       String
+  id          String   @id @default(uuid())
+  title       String   @unique
   description String?
-  createdAt   DateTime         @default(now())
+  createdAt   DateTime @default(now())
+
   assessments QuizAssessment[]
   attempts    QuizAttempt[]
 }
+
 
 model Assessment {
   id        String           @id @default(uuid())
