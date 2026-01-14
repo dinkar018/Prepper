@@ -1,25 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import RequireAuth from "../lib/auth/RequireAuth";
 import { useRouter } from "next/navigation";
+import { useAuth } from "../lib/auth/AuthContext";
 
-export default function Dashboard() {
-  const [user, setUser] = useState<any>(null);
+export default function DashboardPage() {
   const router = useRouter();
+  const { logout } = useAuth();
 
-  useEffect(() => {
-    api("/auth/me")
-      .then(setUser)
-      .catch(() => router.push("/login"));
-  }, []);
-
-  if (!user) return <p>Loading...</p>;
+  const QUIZ_ID = "4c6635c4-0409-4901-b4cb-82c5dc94f65c";
 
   return (
-    <div>
+    <RequireAuth>
       <h1>Dashboard</h1>
-      <p>User ID: {user.id}</p>
-    </div>
+
+      <button onClick={() => router.push(`/quizzes/${QUIZ_ID}`)}>
+        Start Quiz
+      </button>
+
+      <button onClick={logout}>Logout</button>
+    </RequireAuth>
   );
 }

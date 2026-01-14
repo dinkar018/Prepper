@@ -1,41 +1,31 @@
 "use client";
 
 import { useState } from "react";
-import { api } from "@/lib/api";
+import { registerUser } from "../lib/api/auth";
 import { useRouter } from "next/navigation";
 
-export default function Register() {
+export default function RegisterPage() {
   const [mobile, setMobile] = useState("");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const router = useRouter();
 
-  const submit = async () => {
-    try {
-      await api("/auth/register", {
-        method: "POST",
-        body: JSON.stringify({ mobile, password }),
-      });
-      router.push("/login");
-    } catch (err: any) {
-      alert(err.message);
-    }
-  };
+  async function handleRegister() {
+    await registerUser({ mobile, password, name });
+    router.push("/login");
+  }
 
   return (
     <div>
-      <input
-        placeholder="Mobile"
-        maxLength={10}
-        onChange={(e) => setMobile(e.target.value)}
-      />
+      <h2>Register</h2>
+      <input placeholder="Name" onChange={e => setName(e.target.value)} />
+      <input placeholder="Mobile" onChange={e => setMobile(e.target.value)} />
       <input
         type="password"
         placeholder="Password"
-        onChange={(e) => setPassword(e.target.value)}
+        onChange={e => setPassword(e.target.value)}
       />
-      <button type="button" onClick={submit}>
-        Register
-      </button>
+      <button onClick={handleRegister}>Register</button>
     </div>
   );
 }

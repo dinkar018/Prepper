@@ -13,18 +13,16 @@ export const registerController = async (req: Request, res: Response) => {
 };
 
 export const loginController = async (req: Request, res: Response) => {
-  const { mobile, password } = req.body;
+  console.log("🔥 LOGIN CONTROLLER HIT 🔥");
 
+  const { mobile, password } = req.body;
   const { user, token } = await loginUser(mobile, password);
 
-  res.cookie("token", token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: false, // true in prod
-  });
+  console.log("🔥 TOKEN GENERATED:", token);
 
-  res.json({
+  return res.json({
     message: "Login successful",
+    token,
     user: {
       id: user.id,
       mobile: user.mobile,
@@ -32,6 +30,7 @@ export const loginController = async (req: Request, res: Response) => {
     },
   });
 };
+
 
 export const logoutController = async (_: Request, res: Response) => {
   res.clearCookie("token");

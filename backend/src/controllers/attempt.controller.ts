@@ -2,6 +2,14 @@ import { Request, Response } from "express";
 import { startAttempt , syncResponses } from "../services/attempt.service";
 import prisma from "../prisma/client";
 
+declare global {
+  namespace Express {
+    interface Request {
+      user?: { id: string };
+    }
+  }
+}
+
 export const startAttemptController = async (req: Request, res: Response) => {
   const { quizId } = req.body;
   const userId = req.user!.id; // assume auth middleware
