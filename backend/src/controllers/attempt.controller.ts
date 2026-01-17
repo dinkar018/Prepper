@@ -14,6 +14,9 @@ export const startAttemptController = async (req: Request, res: Response) => {
   const { quizId } = req.body;
   const userId = req.user!.id; // assume auth middleware
 
+   if (!quizId) {
+    return res.status(400).json({ message: "quizId required" });
+  }
   const attempt = await startAttempt(userId, quizId);
 
   res.json({
@@ -21,6 +24,7 @@ export const startAttemptController = async (req: Request, res: Response) => {
     attemptNumber: attempt.attemptNumber,
   });
 };
+
 export const syncResponsesController = async (
   req: Request,
   res: Response

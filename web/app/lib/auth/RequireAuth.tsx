@@ -9,13 +9,19 @@ export default function RequireAuth({
 }: {
   children: React.ReactNode;
 }) {
-  const { token } = useAuth();
+  const { token, loading } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!token) router.replace("/login");
-  }, [token, router]);
+  console.log("🔐 RequireAuth", { loading, token });
 
+  useEffect(() => {
+    console.log("✅ AuthProvider mounted");
+    if (!loading && !token) {
+      router.replace("/login");
+    }
+  }, [loading, token, router]);
+
+  if (loading) return <div>Checking authentication...</div>;
   if (!token) return null;
 
   return <>{children}</>;

@@ -1,4 +1,5 @@
 "use client";
+console.log("🧩 QuizContainer render");
 
 import { useEffect, useState } from "react";
 import { getQuiz } from "../../lib/api/quiz";
@@ -14,55 +15,85 @@ import {
 } from "../../lib/storage";
 import QuestionCard from "./QuestionCard";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/app/lib/auth/AuthContext";
 
 export default function QuizContainer({ quizId }: { quizId: string }) {
   const router = useRouter();
+  const { token } = useAuth();
+
   const [quiz, setQuiz] = useState<any>(null);
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    async function init() {
-      const saved = loadAttempt();
+useEffect(() => {
+  console.log("⚡ useEffect fired", { token, quizId });
+  
+  if (!token) {
+    console.log("⛔ token missing, effect aborted");
+    return;
+  }
+  
+  let isMounted = true; // Prevent state updates after unmount
 
-      if (saved?.quizId === quizId) {
-        setAttemptId(saved.attemptId);
-        setIndex(saved.index);
-        setAnswers(saved.answers);
-      } else {
-        const attempt = await startAttempt(quizId);
-        setAttemptId(attempt.id);
+  async function init() {
+    console.log("▶ init called");
+    const saved = loadAttempt();
 
-        saveAttempt({
-          quizId,
-          attemptId: attempt.id,
-          index: 0,
-          answers: {},
-        });
-      }
+    if (saved && saved.quizId === quizId && saved.attemptId) {
+      if (!isMounted) return;
+      setAttemptId(saved.attemptId);
+      setIndex(saved.index);
+      setAnswers(saved.answers);
+      
+      // Still fetch quiz data
+      const quizData = await getQuiz(quizId, token);
+      if (!isMounted) return;
+      setQuiz(quizData);
+    } else {
+      const attempt = await startAttempt(quizId, token);
+      if (!isMounted) return;
+      
+      setAttemptId(attempt.attemptId); // Use attemptId from response
+      
+      saveAttempt({
+        quizId,
+        attemptId: attempt.attemptId,
+        index: 0,
+        answers: {},
+      });
 
-      const quizData = await getQuiz(quizId);
+      const quizData = await getQuiz(quizId, token);
+      if (!isMounted) return;
       setQuiz(quizData);
     }
+  }
 
-    init();
-  }, [quizId]);
+  init();
 
-  if (!quiz || !attemptId) return <div>Loading...</div>;
+  return () => {
+    isMounted = false; // Cleanup
+  };
+}, [quizId, token]);
+
+  if (!quiz || !attemptId) return <div>Loading quiz...</div>;
 
   const questions = quiz.assessments[0].questions;
   const question = questions[index];
 
   async function answer(optionId: string) {
+    if (!attemptId || !token) return;
+
     const updated = { ...answers, [question.id]: optionId };
     setAnswers(updated);
 
     saveAttempt({ quizId, attemptId, index, answers: updated });
 
-    await syncResponses(attemptId, [
-      { questionId: question.id, optionId },
-    ]);
+    await syncResponses(
+  attemptId,
+  token, // Add token as second parameter
+  [{ questionId: question.id, optionId }]
+);
   }
 
   function next() {
@@ -72,7 +103,9 @@ export default function QuizContainer({ quizId }: { quizId: string }) {
   }
 
   async function submit() {
-    await submitAttempt(attemptId);
+    if (!attemptId || !token) return;
+
+    await submitAttempt(attemptId, token);
     clearAttempt();
     router.push("/dashboard");
   }
